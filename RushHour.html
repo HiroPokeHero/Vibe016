@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ラッシュアワー</title>
+<style>
+:root { --cs: 50px; --pad: 10px; --gap: 4px; }
+@media (max-width: 400px) { :root { --cs: 14vw; } }
+body { font-family: sans-serif; background: #f3f4f6; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; touch-action: none; }
+h1 { margin: 10px 0 15px; color: #111827; }
+.info { display: flex; justify-content: space-between; width: calc(var(--cs)*6 + var(--pad)*2); margin-bottom: 15px; font-weight: bold; background: white; padding: 10px; border-radius: 8px; box-sizing: border-box; }
+.board-wrap { position: relative; background: #9ca3af; padding: var(--pad); border-radius: 12px; border: 4px solid #4b5563; }
+.board-wrap::after { content: "EXIT"; position: absolute; right: -45px; top: calc(var(--pad) + var(--cs)*2.5 - 10px); color: #ef4444; font-weight: bold; transform: rotate(90deg); }
+.board-wrap::before { content: ""; position: absolute; right: -4px; top: calc(var(--pad) + var(--cs)*2); width: 4px; height: var(--cs); background: #9ca3af; z-index: 10; }
+.board { position: relative; width: calc(var(--cs)*6); height: calc(var(--cs)*6); background-image: linear-gradient(to right, #d1d5db 1px, transparent 1px), linear-gradient(to bottom, #d1d5db 1px, transparent 1px); background-size: var(--cs) var(--cs); border: 1px solid #d1d5db; }
+.car { position: absolute; border-radius: 8px; cursor: grab; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: transform 0.1s; user-select: none; display: flex; align-items: center; }
+.car:active { cursor: grabbing; z-index: 100; box-shadow: 0 6px 12px rgba(0,0,0,0.3); }
+.car.target { background: #ef4444 !important; }
+.car.target::before { content: "►"; color: rgba(255,255,255,0.7); margin-left: 10px; }
+.controls { margin-top: 20px; display: flex; gap: 10px; }
+button { padding: 10px 16px; font-weight: bold; color: white; background: #3b82f6; border: none; border-radius: 8px; cursor: pointer; }
+button:active { transform: translateY(2px); }
+button.reset { background: #6b7280; }
+#modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
+.modal-content { background: white; padding: 30px; border-radius: 16px; text-align: center; }
+.modal-content h2 { color: #10b981; margin-top: 0; }
+</style>
+</head>
+<body>
+<h1>ラッシュアワー</h1>
+<div class="info"><span id="lvl">レベル: 1</span><span id="mov">手数: 0</span></div>
+<div class="board-wrap"><div class="board" id="board"></div></div>
+<div class="controls">
+<button class="reset" onclick="resetLvl()">リセット</button>
+<button onclick="prevLvl()">前へ</button>
+<button onclick="nextLvl()">次へ</button>
+</div>
+<div id="modal"><div class="modal-content"><h2>クリア！</h2><p id="win-mov"></p><button onclick="nextLvl()">次のレベルへ</button></div></div>
+<script>
+const levels = [
+  [{id:'t',r:2,c:0,len:2,dir:'h',color:'#ef4444',isTarget:true},{id:'c1',r:1,c:2,len:2,dir:'v',color:'#10b981'},{id:'c2',r:1,c:3,len:2,dir:'h',color:'#f59e0b'},{id:'c3',r:3,c:2,len:3,dir:'v',color:'#8b5cf6'},{id:'c4',r:5,c:3,len:3,dir:'h',color:'#3b82f6'}],
+  [{id:'t',r:2,c:1,len:2,dir:'h',color:'#ef4444',isTarget:true},{id:'c1',r:0,c:3,len:3,dir:'v',color:'#8b5cf6'},{id:'c2',r:3,c:1,len:2,dir:'h',color:'#10b981'},{id:'c3',r:4,c:1,len:2,dir:'v',color:'#f59e0b'},{id:'c4',r:5,c:2,len:2,dir:'h',color:'#ec4899'},{id:'c5',r:1,c:5,len:3,dir:'v',color:'#3b82f6'}],
+  [{id:'t',r:2,c:1,len:2,dir:'h',color:'#ef4444',isTarget:true},{id:'c1',r:0,c:0,len:3,dir:'v',color:'#8b5cf6'},{id:'c2',r:0,c:1,len:2,dir:'h',color:'#10b981'},{id:'c3',r:0,c:5,len:3,dir:'v',color:'#3b82f6'},{id:'c4',r:1,c:3,len:2,dir:'v',color:'#f59e0b'},{id:'c5',r:3,c:4,len:2,dir:'h',color:'#ec4899'},{id:'c6',r:4,c:0,len:2,dir:'h',color:'#14b8a6'},{id:'c7',r:4,c:2,len:2,dir:'v',color:'#f97316'},{id:'c8',r:5,c:3,len:3,dir:'h',color:'#6366f1'}]
+];
+let curLvl=0, moves=0, cars=[], cs=50, gap=4;
+const board=document.getElementById('board'), lvlEl=document.getElementById('lvl'), movEl=document.getElementById('mov'), modal=document.getElementById('modal');
+
+function init() {
+  updateSize(); window.addEventListener('resize', ()=>{updateSize(); render();});
+  loadLvl(0);
+}
+function updateSize() {
+  cs = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cs'));
+}
+function loadLvl(idx) {
+  if(idx<0) idx=0; if(idx>=levels.length) idx=levels.length-1;
+  curLvl=idx; moves=0; cars=JSON.parse(JSON.stringify(levels[idx]));
+  updateUI(); render(); modal.style.display='none';
+}
+window.resetLvl = () => loadLvl(curLvl);
+window.nextLvl = () => { if(curLvl<levels.length-1) loadLvl(curLvl+1); else { alert("全クリア！"); modal.style.display='none'; } };
+window.prevLvl = () => { if(curLvl>0) loadLvl(curLvl-1); };
+function updateUI() { lvlEl.textContent=`レベル: ${curLvl+1}`; movEl.textContent=`手数: ${moves}`; }
+
+function render() {
+  board.innerHTML='';
+  cars.forEach(c => {
+    const el = document.createElement('div');
+    el.className = `car ${c.isTarget?'target':''}`; el.id = c.id;
+    el.style.width = c.dir==='h' ? `${c.len*cs - gap*2}px` : `${cs - gap*2}px`;
+    el.style.height = c.dir==='v' ? `${c.len*cs - gap*2}px` : `${cs - gap*2}px`;
+    el.style.backgroundColor = c.color;
+    updatePos(el, c.c, c.r);
+    el.addEventListener('pointerdown', onDown);
+    board.appendChild(el);
+  });
+}
+function updatePos(el, c, r) { el.style.transform = `translate(${c*cs+gap}px, ${r*cs+gap}px)`; }
+
+let active=null, sX=0, sY=0, iC=0, iR=0, minC=0, maxC=0, minR=0, maxR=0;
+function onDown(e) {
+  if(e.button!==0 && e.type!=='touchstart') return;
+  active = cars.find(c => c.id===e.target.id); if(!active) return;
+  e.target.setPointerCapture(e.pointerId);
+  sX=e.clientX; sY=e.clientY; iC=active.c; iR=active.r;
+  calcBounds(active);
+  e.target.addEventListener('pointermove', onMove);
+  e.target.addEventListener('pointerup', onUp);
+  e.target.addEventListener('pointercancel', onUp);
+  e.target.style.transition='none';
+}
+function onMove(e) {
+  if(!active) return;
+  let nC=iC, nR=iR;
+  if(active.dir==='h') { nC = Math.max(minC, Math.min(maxC, iC + (e.clientX-sX)/cs)); }
+  else { nR = Math.max(minR, Math.min(maxR, iR + (e.clientY-sY)/cs)); }
+  updatePos(document.getElementById(active.id), nC, nR);
+}
+function onUp(e) {
+  if(!active) return;
+  const el = document.getElementById(active.id);
+  el.removeEventListener('pointermove', onMove); el.removeEventListener('pointerup', onUp); el.removeEventListener('pointercancel', onUp);
+  el.releasePointerCapture(e.pointerId); el.style.transition='transform 0.1s';
+  
+  let fC=iC, fR=iR;
+  if(active.dir==='h') { fC = Math.round(Math.max(minC, Math.min(maxC, iC + (e.clientX-sX)/cs))); active.c = fC; }
+  else { fR = Math.round(Math.max(minR, Math.min(maxR, iR + (e.clientY-sY)/cs))); active.r = fR; }
+  updatePos(el, active.c, active.r);
+  
+  if(fC!==iC || fR!==iR) { moves++; updateUI(); checkWin(); }
+  active=null;
+}
+function calcBounds(car) {
+  const g = Array(6).fill(0).map(()=>Array(6).fill(0));
+  cars.forEach(c => {
+    if(c.id===car.id) return;
+    for(let i=0; i<c.len; i++) { if(c.dir==='h') g[c.r][c.c+i]=1; else g[c.r+i][c.c]=1; }
+  });
+  minC=car.c; maxC=car.c; minR=car.r; maxR=car.r;
+  if(car.dir==='h') {
+    for(let c=car.c-1; c>=0; c--) { if(g[car.r][c]) break; minC=c; }
+    for(let c=car.c+car.len; c<6; c++) { if(g[car.r][c]) break; maxC=c-car.len+1; }
+  } else {
+    for(let r=car.r-1; r>=0; r--) { if(g[r][car.c]) break; minR=r; }
+    for(let r=car.r+car.len; r<6; r++) { if(g[r][car.c]) break; maxR=r-car.len+1; }
+  }
+}
+function checkWin() {
+  const t = cars.find(c=>c.isTarget);
+  if(t && t.c+t.len-1===5) {
+    setTimeout(()=>{ document.getElementById('win-mov').textContent=`手数: ${moves}`; modal.style.display='flex'; }, 200);
+  }
+}
+init();
+</script>
+</body>
+</html>
+
