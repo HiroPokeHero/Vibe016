@@ -36,15 +36,50 @@ button.reset { background: #6b7280; }
 <button onclick="prevLvl()">前へ</button>
 <button onclick="nextLvl()">次へ</button>
 </div>
+<div style="text-align: center; margin-top: 20px; font-size: 0.9rem; color: #666;">新しいゲームを楽しむためには下のセットボタンを押してください</div>
+<div class="controls" style="flex-wrap: wrap; justify-content: center; margin-top: 5px;">
+<button onclick="loadSet('A')" style="background: #8b5cf6;">セットA</button>
+<button onclick="loadSet('B')" style="background: #8b5cf6;">セットB</button>
+<button onclick="loadSet('C')" style="background: #8b5cf6;">セットC</button>
+<button onclick="loadSet('D')" style="background: #8b5cf6;">セットD</button>
+<button onclick="loadSet('E')" style="background: #8b5cf6;">セットE</button>
+</div>
+<div id="load-msg" style="text-align: center; margin-top: 10px; color: #10b981; font-weight: bold; height: 1.5em; transition: opacity 0.5s;"></div>
 <div id="modal"><div class="modal-content"><h2>クリア！</h2><p id="win-mov"></p><button onclick="nextLvl()">次のレベルへ</button></div></div>
 <script>
-const levels = [
+let levels = [
   [{id:'t',r:2,c:0,len:2,dir:'h',color:'#ef4444',isTarget:true},{id:'c1',r:1,c:2,len:2,dir:'v',color:'#10b981'},{id:'c2',r:1,c:3,len:2,dir:'h',color:'#f59e0b'},{id:'c3',r:3,c:2,len:3,dir:'v',color:'#8b5cf6'},{id:'c4',r:5,c:3,len:3,dir:'h',color:'#3b82f6'}],
   [{id:'t',r:2,c:1,len:2,dir:'h',color:'#ef4444',isTarget:true},{id:'c1',r:0,c:3,len:3,dir:'v',color:'#8b5cf6'},{id:'c2',r:3,c:1,len:2,dir:'h',color:'#10b981'},{id:'c3',r:4,c:1,len:2,dir:'v',color:'#f59e0b'},{id:'c4',r:5,c:2,len:2,dir:'h',color:'#ec4899'},{id:'c5',r:1,c:5,len:3,dir:'v',color:'#3b82f6'}],
-  [{id:'t',r:2,c:1,len:2,dir:'h',color:'#ef4444',isTarget:true},{id:'c1',r:0,c:0,len:3,dir:'v',color:'#8b5cf6'},{id:'c2',r:0,c:1,len:2,dir:'h',color:'#10b981'},{id:'c3',r:0,c:5,len:3,dir:'v',color:'#3b82f6'},{id:'c4',r:1,c:3,len:2,dir:'v',color:'#f59e0b'},{id:'c5',r:3,c:4,len:2,dir:'h',color:'#ec4899'},{id:'c6',r:4,c:0,len:2,dir:'h',color:'#14b8a6'},{id:'c7',r:4,c:2,len:2,dir:'v',color:'#f97316'},{id:'c8',r:5,c:3,len:3,dir:'h',color:'#6366f1'}]
+  [{id:'t',r:2,c:1,len:2,dir:'h',color:'#ef4444',isTarget:true},{id:'c1',r:0,c:0,len:3,dir:'v',color:'#8b5cf6'},{id:'c2',r:0,c:1,len:2,dir:'h',color:'#10b981'},{id:'c3',r:0,c:5,len:3,dir:'v',color:'#3b82f6'},{id:'c4',r:1,c:3,len:2,dir:'v',color:'#f59e0b'},{id:'c5',r:3,c:4,len:2,dir:'h',color:'#ec4899'},{id:'c6',r:4,c:0,len:2,dir:'h',color:'#14b8a6'},{id:'c7',r:4,c:2,len:2,dir:'v',color:'#f97316'},{id:'c8',r:5,c:3,len:3,dir:'h',color:'#6366f1'}],
+  [{id:'t',r:2,c:1,len:2,dir:'h',color:'#ef4444',isTarget:true},{id:'c1',r:0,c:0,len:2,dir:'v',color:'#10b981'},{id:'c2',r:0,c:1,len:2,dir:'h',color:'#f59e0b'},{id:'c3',r:0,c:3,len:3,dir:'v',color:'#8b5cf6'},{id:'c4',r:1,c:4,len:2,dir:'v',color:'#3b82f6'},{id:'c5',r:3,c:1,len:2,dir:'v',color:'#ec4899'},{id:'c6',r:4,c:2,len:2,dir:'h',color:'#14b8a6'},{id:'c7',r:4,c:4,len:2,dir:'h',color:'#f97316'},{id:'c8',r:5,c:0,len:3,dir:'h',color:'#6366f1'}],
+  [{id:'t',r:2,c:3,len:2,dir:'h',color:'#ef4444',isTarget:true},{id:'c1',r:0,c:0,len:2,dir:'h',color:'#10b981'},{id:'c2',r:0,c:2,len:2,dir:'v',color:'#f59e0b'},{id:'c3',r:1,c:0,len:2,dir:'v',color:'#8b5cf6'},{id:'c4',r:1,c:3,len:2,dir:'h',color:'#3b82f6'},{id:'c5',r:3,c:2,len:2,dir:'v',color:'#ec4899'},{id:'c6',r:3,c:4,len:2,dir:'v',color:'#14b8a6'},{id:'c7',r:4,c:0,len:2,dir:'h',color:'#f97316'},{id:'c8',r:5,c:1,len:2,dir:'h',color:'#6366f1'},{id:'c9',r:5,c:3,len:3,dir:'h',color:'#8b5cf6'}],
+  [{id:'t',r:2,c:2,len:2,dir:'h',color:'#ef4444',isTarget:true},{id:'c1',r:0,c:0,len:3,dir:'v',color:'#10b981'},{id:'c2',r:0,c:1,len:2,dir:'h',color:'#f59e0b'},{id:'c3',r:0,c:3,len:2,dir:'v',color:'#8b5cf6'},{id:'c4',r:0,c:4,len:2,dir:'h',color:'#3b82f6'},{id:'c5',r:1,c:1,len:2,dir:'v',color:'#ec4899'},{id:'c6',r:1,c:5,len:3,dir:'v',color:'#14b8a6'},{id:'c7',r:3,c:0,len:2,dir:'v',color:'#f97316'},{id:'c8',r:3,c:3,len:2,dir:'h',color:'#6366f1'},{id:'c9',r:4,c:1,len:2,dir:'h',color:'#f59e0b'},{id:'c10',r:4,c:3,len:2,dir:'v',color:'#8b5cf6'},{id:'c11',r:5,c:4,len:2,dir:'h',color:'#10b981'}]
 ];
 let curLvl=0, moves=0, cars=[], cs=50, gap=4;
-const board=document.getElementById('board'), lvlEl=document.getElementById('lvl'), movEl=document.getElementById('mov'), modal=document.getElementById('modal');
+const board=document.getElementById('board'), lvlEl=document.getElementById('lvl'), movEl=document.getElementById('mov'), modal=document.getElementById('modal'), loadMsg=document.getElementById('load-msg');
+
+let loadTimeout;
+async function loadSet(setName) {
+  try {
+    const res = await fetch(`set${setName}.json`);
+    if (!res.ok) throw new Error('Network response was not ok');
+    levels = await res.json();
+    loadLvl(0);
+    
+    // Show message for 10 seconds
+    if (loadTimeout) clearTimeout(loadTimeout);
+    loadMsg.textContent = "新しいデータが読みこまれました";
+    loadMsg.style.opacity = "1";
+    loadTimeout = setTimeout(() => {
+      loadMsg.style.opacity = "0";
+      setTimeout(() => { loadMsg.textContent = ""; }, 500);
+    }, 10000);
+    
+  } catch (e) {
+    console.error(e);
+    alert(`ゲームセット${setName}の読み込みに失敗しました。`);
+  }
+}
 
 function init() {
   updateSize(); window.addEventListener('resize', ()=>{updateSize(); render();});
